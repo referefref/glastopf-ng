@@ -2,13 +2,13 @@ gevent>=1.0
 webob>=1.2.0
 pyopenssl
 lxml
-sqlalchemy>=0.8.0
+sqlalchemy
 jinja2
-beautifulsoup>=3.2.0
+beautifulsoup4
 requests>=2.20.0
 cssselect>=0.7.0
 pymongo>=2.4
-MySQL-python
+pymysql
 hpfeeds
 pylibinjection
 libtaxii>=1.1

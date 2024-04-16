@@ -15,10 +15,12 @@
 # Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
+#import json
 import logging
-from sqlalchemy import create_engine, Table, Column, Integer, String, MetaData, TEXT, Boolean
+
+from sqlalchemy import Table, Column, Integer, String, MetaData, TEXT, Boolean
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.exc import OperationalError
+from sqlalchemy import exc
 import glastopf.modules.processing.ip_profile as ipp
 
 logger = logging.getLogger(__name__)
@@ -33,43 +35,43 @@ class Database(object):
 
     def insert(self, attack_event):
         entry = attack_event.event_dict()
-        entry['source'] = f"{entry['source'][0]}:{entry['source'][1]}"
+
+        entry['source'] = (entry['source'][0] + ":" + str(entry['source'][1]))
 
         try:
-            # Create a new connection and transaction
-            with self.engine.connect() as conn:
-                with conn.begin() as trans:
-                    # Execute the insert statement with the dictionary passed directly
-                    conn.execute(self.events_table.insert(), entry)
-                    # Commit the transaction
-                    trans.commit()
-        except OperationalError as e:
-            logger.error(f"Error inserting attack event into main database: {e}")
+            conn = self.engine.connect()
+            conn.execute(self.events_table.insert(entry))
+        except exc.OperationalError as e:
+            logger.error("Error inserting attack event into main database: {0}".format(e))
 
     def insert_profile(self, ip_profile):
+        # print "last_event_time for ip %s:%s"%(
+        #             ip_profile.ip, ip_profile.last_event_time)
+        # .split()[0] is added to deal with multiple ASNs
         self.session.add(ip_profile)
         try:
             self.session.commit()
-        except OperationalError as e:
+        except exc.OperationalError as e:
             self.session.rollback()
-            logger.error(f"Error inserting profile into main database: {e}")
+            logger.error("Error inserting profile into main database: {0}".format(e))
 
     def update_db(self):
         try:
             self.session.commit()
-        except OperationalError as e:
+        except exc.OperationalError as e:
             self.session.rollback()
-            logger.error(f"Error updating profile in main database: {e}")
+            logger.error("Error updating profile in main database: {0}".format(e))
 
     def get_profile(self, source_ip):
-        ip_profile = self.session.query(ipp.IPProfile).filter(ipp.IPProfile.ip == source_ip).first()
+        ip_profile = self.session.query(ipp.IPProfile).filter(
+            ipp.IPProfile.ip == source_ip).first()
         return ip_profile
 
     def setup_mapping(self):
         meta = MetaData()
         self.events_table = Table(
             'events', meta,
-            Column('id', Integer, primary_key=True),
+            Column('id', Integer, primary_key=True, ),
             Column('time', String(30)),
             Column('source', String(30)),
             Column('request_url', String(500)),
@@ -79,8 +81,7 @@ class Database(object):
             Column('file_sha256', String(500)),
             Column('version', String(10)),
             Column('sensorid', String(36)),
-            Column('known_file', Boolean)
+            Column('known_file', Boolean())
         )
-        # Only creates if it can't find the schema
+        #only creates if it cant find the schema
         meta.create_all(self.engine)
-

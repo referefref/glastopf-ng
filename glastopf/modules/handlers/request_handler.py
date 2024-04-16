@@ -30,7 +30,7 @@ class RequestHandler:
         try:
             BaseEmulator(self.data_dir)
             module_name = "glastopf.modules.handlers.emulators." + name
-            __import__(module_name, globals(), locals(), [], -1)
+            __import__(module_name, globals(), locals(), [], 0)
             emulators = BaseEmulator.__subclasses__()
         except ImportError as e:
             logging.exception("Error while importing emulator: {0}: {1}".format(name, e))

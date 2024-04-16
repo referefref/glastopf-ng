@@ -1,5 +1,5 @@
 import collections
-import thread
+import _thread as thread
 import time
 import subprocess
 from datetime import datetime, timedelta

@@ -52,7 +52,7 @@ class DorkPageGenerator(object):
         else:
             self.pages_path = os.path.join(pages_dir, 'dork_pages')
         if not os.path.isdir(self.pages_path):
-            os.mkdir(self.pages_path, 0770)
+            os.mkdir(self.pages_path, 770)
         self.dork_file_processor = dorks_file_processor_instance
         self.mnem_service = mnem_service_instance
 
@@ -71,7 +71,7 @@ class DorkPageGenerator(object):
             for text_line in text_file.readlines():
                 text_line = text_line.strip()
                 if text_line != "":
-                    line_list.append(unicodedata.normalize('NFKD', text_line).encode('ascii', 'ignore'))
+                    line_list.append(unicodedata.normalize('NFKD', text_line)) #.encode('ascii', 'ignore')) adjust for python3
         return line_list
 
     def generate_dork_pages(self):
@@ -106,7 +106,7 @@ class DorkPageGenerator(object):
                                                            "/index",
                                                            body,
                                                            "Footer Powered By")
-            page_md5 = hashlib.md5(dork_page).hexdigest()
+            page_md5 = hashlib.md5(dork_page.encode('utf-8')).hexdigest()
             new_pages.append(page_md5)
             with codecs.open("{0}/{1}".format(self.pages_path, page_md5), "w", "utf-8") as dork_file:
                 dork_file.write(dork_page)

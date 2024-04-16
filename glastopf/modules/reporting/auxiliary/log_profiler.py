@@ -7,7 +7,7 @@ import os
 # import pyodbc
 import sqlite3
 
-from ConfigParser import NoSectionError, NoOptionError
+from configparser import NoSectionError, NoOptionError
 from glastopf.modules.reporting.auxiliary.base_logger import BaseLogger
 
 

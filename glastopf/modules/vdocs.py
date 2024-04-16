@@ -114,7 +114,7 @@ ssh:x:106:"""
 
 def _get_entry(user_id):
     # Random username of 3 characters
-    name = "".join([random.choice(string.letters[:26]) for i in xrange(3)])
+    name = "".join([random.choice(string.letters[:26]) for i in range(3)])
     gid = user_id
     uid = user_id
     g = "\n" + name + ":x:" + str(gid) + ":"
@@ -128,7 +128,7 @@ def _get_entry(user_id):
 def _gen_data():
     data = []
     num_entries = random.randint(1, 10)  # number of random entries
-    for i in xrange(num_entries):
+    for i in range(num_entries):
         # Possible duplication of user id, but very low probability
         user_id = random.randint(1000, 1500)
         data.append(_get_entry(user_id))

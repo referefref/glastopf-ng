@@ -22,27 +22,32 @@ monkey.patch_all()
 import gevent
 import os
 import sys
-import Queue
+import queue as Queue # adjust for py3
 import uuid
+import shutil
 
-from ConfigParser import ConfigParser, NoSectionError, NoOptionError
+from configparser import ConfigParser, NoSectionError, NoOptionError # adjust for py3
 import logging.handlers
 
 from __init__ import __version__
-from modules.HTTP.handler import HTTPHandler
-import modules.HTTP.method_handler as method_handler
-import modules.events.attack as attack
-from modules.handlers.request_handler import RequestHandler
-from modules import logging_handler, vdocs
-import shutil
-import modules.privileges as privileges
-import modules.processing.profiler as profiler
-from modules.handlers.emulators.dork_list import dork_file_processor
-from modules.handlers.emulators.dork_list import database_sqla
-from modules.handlers.emulators.dork_list import database_mongo
-from modules.handlers.emulators.dork_list import dork_page_generator
-from modules.handlers.emulators.dork_list import mnem_service
-from modules.reporting.main import log_mongodb, log_sql
+from .modules.HTTP.handler import HTTPHandler
+from .modules.HTTP import method_handler
+from .modules.events import attack
+from .modules.handlers.request_handler import RequestHandler
+from glastopf.modules.HTTP.handler import HTTPHandler
+from glastopf.modules.HTTP import method_handler
+from glastopf.modules.events import attack
+from glastopf.modules.handlers.request_handler import RequestHandler
+from glastopf.modules import logging_handler, vdocs
+from glastopf.modules import privileges
+from glastopf.modules.processing import profiler
+from glastopf.modules.handlers.emulators.dork_list import dork_file_processor
+from glastopf.modules.handlers.emulators.dork_list import database_sqla
+from glastopf.modules.handlers.emulators.dork_list import database_mongo
+from glastopf.modules.handlers.emulators.dork_list import dork_page_generator
+from glastopf.modules.handlers.emulators.dork_list import mnem_service
+from glastopf.modules.reporting.main.log_mongodb import Database as log_mongodb
+from glastopf.modules.reporting.main.log_sql import Database as log_sql
 from subprocess import check_call
 from sqlalchemy import create_engine
 
@@ -166,7 +171,7 @@ class GlastopfHoneypot(object):
             elif connection_string.startswith(("sqlite", "mysql",
                                                "oracle", "postgresql")):
                 sqla_engine = create_engine(connection_string)
-                maindb = log_sql.Database(sqla_engine)
+                maindb = log_sql(sqla_engine)
                 dorkdb = database_sqla.Database(sqla_engine)
                 return maindb, dorkdb
             else:

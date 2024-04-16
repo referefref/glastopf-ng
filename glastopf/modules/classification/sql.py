@@ -31,11 +31,13 @@ class SQLiClassifier(object):
     def __init__(self):
         file_dir = os.path.dirname(os.path.abspath(__file__))
         queries_file = os.path.join(file_dir, "sql_utils", "token_map.json")
-        with open(queries_file, "rb") as fh:
+        with open(queries_file, "r") as fh:
             self.token_map = json.load(fh)
 
     @classmethod
     def classify(cls, string):
+        if isinstance(string, str):
+            string = string.encode('utf-8')  # Ensure the string is encoded to bytes
         return pylibinjection.detect_sqli(string)
 
     def _token_squence_matcher(self, query_tokens):

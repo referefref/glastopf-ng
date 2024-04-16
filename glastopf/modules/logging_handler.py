@@ -39,7 +39,7 @@ def get_aux_loggers(data_dir, work_dir, create_tables=True):
         BaseLogger()
         for name in _get_logger_names():
             module_name = "glastopf.modules.reporting.auxiliary." + name.split('.', 1)[0]
-            __import__(module_name, globals(), locals(), [], -1)
+            __import__(module_name, globals(), locals(), [], 0)
         logger_classes = BaseLogger.__subclasses__()
     except ImportError as e:
         logger.exception("Error while importing logger: {0}".format(e))

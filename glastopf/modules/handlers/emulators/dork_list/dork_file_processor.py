@@ -34,7 +34,7 @@ class DorkFileProcessor(object):
             for dork_line in dork_list.readlines():
                 dork_line = dork_line.strip()
                 if dork_line != "":
-                    dork_lines.append(unicodedata.normalize('NFKD', dork_line).encode('ascii', 'ignore'))
+                    dork_lines.append(unicodedata.normalize('NFKD', dork_line)) #Rm for python3 .encode('ascii', 'ignore'))
         return dork_lines
 
     @classmethod

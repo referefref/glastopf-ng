@@ -13,6 +13,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+
+
 from webob import Request, Response
 
 class GlastopfWSGI(object):
@@ -20,9 +22,13 @@ class GlastopfWSGI(object):
         self.honeypot = honeypot
 
     def remove_hop_by_hop_headers(self, headers):
+        """
+        Removes hop-by-hop headers from a dictionary of headers.
+        """
         hop_by_hop_names = ("connection", "keep-alive", "proxy-authenticate",
                             "proxy-authorization", "te", "trailers",
                             "transfer-encoding", "upgrade")
+
         for header in hop_by_hop_names:
             if header in headers:
                 del headers[header]
@@ -31,36 +37,30 @@ class GlastopfWSGI(object):
         req_webob = Request(environ)
         res_webob = Response()
 
-        # Handle request_body as bytes directly from WSGI environment
-        request_body = environ['wsgi.input'].read()
-
-        # Adjust address handling to ensure correct types
+        #addr tuple as glastopf expects it
         remote_addr = (req_webob.remote_addr, int(environ["REMOTE_PORT"]))
-        sensor_addr = (environ['SERVER_NAME'], int(environ.get('SERVER_PORT', 80)))
+        if "SERVER_NAME" in environ and "SERVER_PORT" in environ:
+            # we could use socket.gethostbyname to get the ip...
+            sensor_addr = (environ['wsgi.input'].rfile._sock.getsockname()[0], environ['wsgi.input'].rfile._sock.getsockname()[1])
+        else:
+            sensor_addr = ("", "")
 
-        # Handle request and manage response headers and body properly
-        header, body = self.honeypot.handle_request(request_body, remote_addr, sensor_addr)
-        
-        # Ensure the header is treated as a string
-        if isinstance(header, bytes):
-            header = header.decode('utf-8')
-        
-        proto, code, msg = ['HTTP/1.0', '200', 'OK']
+        header, body = self.honeypot.handle_request(req_webob.as_text(),
+                                                         remote_addr, sensor_addr)
+        proto, code, msg = ['HTTP/1.0','200','OK']
 
-        # Process headers
-        for h in header.split('\n'):
+        for h in header.splitlines():
             if ":" in h:
                 h, v = h.split(":", 1)
                 res_webob.headers[str(h.strip())] = str(v.strip())
             elif "HTTP/" in h:
-                proto, code, msg = h.split(" ", 2)
+                proto, code, msg = h.split(" ",2)
 
-        # Set response status, charset, and body
+        # this will adjust content-length header
         res_webob.status = code
-        res_webob.charset = "utf-8"
-        res_webob.body = body if isinstance(body, bytes) else body.encode('utf-8')
+        res_webob.charset = "utf8"
+        res_webob.text = body.decode("utf-8", "ignore")
 
-        # Remove hop-by-hop headers
+        #WSGI applications are not allowed to create or modify hop-by-hop headers
         self.remove_hop_by_hop_headers(res_webob.headers)
         return res_webob(environ, start_response)
-

@@ -45,7 +45,7 @@ def drop(work_dir, new_uid='nobody', new_gid='nogroup'):
         except OSError as e:
             logger.exception("Could not set net user: {0}".format(e))
 
-        new_umask = 066
+        new_umask = 66
         try:
             os.umask(new_umask)
         except Exception as e:

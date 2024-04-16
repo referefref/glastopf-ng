@@ -15,123 +15,87 @@
 # Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
+from sqlalchemy import create_engine, Text, Boolean, Table, Column, Integer, String, MetaData, select
+from sqlalchemy.orm import sessionmaker
 import logging
-from datetime import datetime
-from sqlalchemy import Table, Column, Integer, String, MetaData
-from sqlalchemy.sql import text
-from sqlalchemy import select
 
 logger = logging.getLogger(__name__)
 
-
 class Database(object):
-    """
-    Responsible for all dork related communication with the glastopf sql database.
-    """
-
     DORK_MAX_LENGTH = 200
 
     def __init__(self, engine):
-
-        meta = MetaData()
         self.engine = engine
-
-        self.tables = self.create(meta, self.engine)
-
-    def select_data(self, pattern="rfi"):
-        url_list = []
-
-        data = self.get_pattern_requests_sql(pattern=pattern)
-        data = list(set(data))
-
-        for request in data:
-            if request:
-                url = request.split('=', 1)[0]
-                url_list.append(url)
-        return url_list
-
-    def get_pattern_requests_sql(self, pattern="rfi"):
-        return_list = []
-        sql = text("SELECT request_url FROM events WHERE pattern = :x")
-        results = self.engine.connect().execute(sql, x=pattern).fetchall()
-        for row in results:
-            return_list.append(row[0])
-        return return_list
+        self.meta = MetaData()
+        self.tables = self.create(self.meta, self.engine)
 
     @classmethod
     def create(cls, meta, engine):
-        logger.debug('Creating SQLite database.')
         tables = {}
-        tablenames = ["intitle", "intext", "inurl", "filetype", "ext", "allinurl"]
-        for table in tablenames:
-            tables[table] = Table(
-                table, meta,
-                Column('content', String(Database.DORK_MAX_LENGTH), primary_key=True),
-                Column('count', Integer),
-                Column('firsttime', String(30)),
-                Column('lasttime', String(30)),
-            )
+        tablenames = ["intitle", "intext", "inurl", "filetype", "ext", "allinurl", "events"]  # Include 'events'
+        for name in tablenames:
+            if name == "events":
+                tables[name] = Table(
+                    name, meta,
+                    Column('id', Integer, primary_key=True),
+                    Column('time', String(30)),
+                    Column('source', String(30)),
+                    Column('request_url', String(500)),
+                    Column('request_raw', Text),
+                    Column('pattern', String(20)),
+                    Column('filename', String(500)),
+                    Column('file_sha256', String(500)),
+                    Column('version', String(10)),
+                    Column('sensorid', String(36)),
+                    Column('known_file', Boolean)
+                )
+            else:
+                tables[name] = Table(
+                    name, meta,
+                    Column('content', String(cls.DORK_MAX_LENGTH), primary_key=True),
+                    Column('count', Integer),
+                    Column('firsttime', String(30)),
+                    Column('lasttime', String(30))
+                )
         meta.create_all(engine)
         return tables
 
+    def get_pattern_requests_sql(self, pattern="rfi"):
+        sql = select([self.tables['events'].c.request_url]).where(self.tables['events'].c.pattern == pattern)
+        with self.engine.connect() as connection:
+            result = connection.execute(sql)
+            return [row[0] for row in result]
+
     def insert_dorks(self, insert_list):
-        logger.debug('Starting insert of {0} dorks into the database.'.format(len(insert_list)))
-        if len(insert_list) == 0:
+        if not insert_list:
             return
-
-        conn = self.engine.connect()
-        trans = conn.begin()
-
-        log = {}
-        for item in insert_list:
-            tablename = item['table']
-            table = self.tables[tablename]
-            content = item['content']
-
-            if tablename not in log:
-                log[tablename] = 0
-
-            #skip empty
-            if not content:
-                continue
-            content = item['content'][:Database.DORK_MAX_LENGTH]
-            dt_string = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            #check table if content exists - content is primary key.
-            db_content = conn.execute(
-                select([table]).
-                where(table.c.content == content)).fetchone()
-            if db_content is None:
-                conn.execute(
-                    table.insert().values({'content': content,
-                                           'count': 1,
-                                           'firsttime': dt_string,
-                                           'lasttime': dt_string}))
-                log[tablename] += 1
-            else:
-                #update existing entry
-                conn.execute(
-                    table.update().
-                    where(table.c.content == content).
-                    values(lasttime=dt_string,
-                           count=table.c.count + 1))
-        trans.commit()
-        conn.close()
-        logger.debug('Done with insert of {0} dorks into the database.'.format(len(insert_list)))
-        logger.debug('New dorks inserted: {0}'.format(log))
+        with self.engine.begin() as connection:
+            for item in insert_list:
+                tablename = item['table']
+                table = self.tables[tablename]
+                content = item['content'][:self.DORK_MAX_LENGTH]
+                sql = select(table).where(table.c.content == content)
+                db_content = connection.execute(sql).fetchone()
+                if not db_content:
+                    connection.execute(table.insert(), {'content': content, 'count': 1, 'firsttime': datetime.now(), 'lasttime': datetime.now()})
+                else:
+                    connection.execute(table.update().where(table.c.content == content).values(lasttime=datetime.now(), count=table.c.count + 1))
 
     def get_dork_list(self, tablename, starts_with=None):
-        conn = self.engine.connect()
         table = self.tables[tablename]
-
-        if starts_with is None:
-            result = conn.execute(select([table]))
+        if starts_with:
+            sql = select(table).where(table.c.content.like(f"%{starts_with}%"))
         else:
-            result = conn.execute(
-                table.select().
-                where(table.c.content.like('%{0}'.format(starts_with))))
+            sql = select(table)
+        with self.engine.connect() as connection:
+            result = connection.execute(sql)
+            return [row[0] for row in result]
 
-        return_list = []
-        for entry in result:
-            return_list.append(entry[0])
-        logger.debug('Returned {0} dorks from the database (starts with: {1})'.format(len(return_list), starts_with))
-        return return_list
+    def select_data(self, pattern="rfi"):
+        # Get the reference to the 'events' table
+        table = self.tables['events']
+        # Correctly create the select statement using the select() function
+        sql = select(table.c.request_url).where(table.c.pattern == pattern)
+        with self.engine.connect() as connection:
+            result = connection.execute(sql)
+            return [row[0] for row in result]  # Return the list of matching request URLs
