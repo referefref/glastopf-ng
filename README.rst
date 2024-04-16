@@ -1,15 +1,10 @@
-We highly recommend to check out the Glastopf successor `SNARE <https://github.com/mushorg/snare>`_ and `TANNER <https://github.com/mushorg/tanner/>`_.
-
-Glastopf |Build Status|
+Glastopf-ng (Python3)
 =======================
-
-.. |Build Status| image:: https://travis-ci.org/mushorg/glastopf.svg?branch=master
-                       :target: https://travis-ci.org/mushorg/glastopf
 
 ABOUT
 -----
 
-Glastopf is a Python web application honeypot founded by Lukas Rist.
+Glastopf is a Python web application honeypot founded by Lukas Rist. This was deprecated by tanner and snare many years ago and left to rust in the python2 desert. As part of some research into deception technologies the codebase has been partially rewritten (leaving as much of the original intact as possible) to function with Python3. There are doubtless errors present still, however it is partially functional on MacOS 14.0 Sonoma for testing purposes.
 
 General approach:
 
